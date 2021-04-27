@@ -1,18 +1,53 @@
 module PhotoGroove exposing (main)
 
-import Html exposing (div, h1, img, text)
+import Html exposing (Html, div, h1, h3, img, input, label, text)
 import Html.Attributes exposing (..)
 import List
 import Html.Events exposing (onClick)
 import Browser
 
+urlPrefix: String
 urlPrefix = "http://elm-in-action.com/"
 
+type alias Photo = { url: String }
+
+type  Msg
+    = ClickedPhoto String
+    | ClickedSize ThumbnailSize
+
+type ThumbnailSize = Small | Medium | Large
+
+sizeToString: ThumbnailSize -> String
+sizeToString size =
+    case size of
+        Small -> "small"
+        Medium -> "med"
+        Large -> "large"
+
+
+
+viewSizeChooser: ThumbnailSize -> Html Msg
+viewSizeChooser size =
+    label []
+        [ input [type_ "radio", name "size", onClick (ClickedSize size) ] []
+        , text (sizeToString size)
+        ]
+
+
+type alias Model =
+    { photos : List Photo
+    , selectedUrl : String
+    , chosenSize : ThumbnailSize}
+
+
+view: Model -> Html Msg
 view model =
      div [ class "content"]
          [ h1 [ ] [text "Photo Groove"]
-         , div [ id "thumbnails" ]
-                (List.map (showThumbnails model.selectedUrl) model.photos)
+         , h3 [] [text "Thumbnail size"]
+         , div [ id "choose-size"] (List.map viewSizeChooser [Small, Medium, Large])
+         , div [ id "thumbnails", class (sizeToString model.chosenSize) ]
+                (List.map (viewThumbnail model.selectedUrl) model.photos)
          , img
             [
             class "large"
@@ -21,22 +56,27 @@ view model =
             []
          ]
 
-update message model =
-    if message.description == "ClickedPhoto" then
-        {model | selectedUrl = message.data }
-    else
-        model
+update: Msg -> Model -> Model
+update msg model =
+    case msg of
+        ClickedPhoto url ->
+            { model | selectedUrl = url }
+
+        ClickedSize size ->
+            { model | chosenSize = size }
 
 
-showThumbnails selectedUrl imgRecord =
+viewThumbnail: String -> Photo -> Html Msg
+viewThumbnail selectedUrl photo =
     img
         [
-        classList [("selected", selectedUrl == imgRecord.url)]
-        , src (urlPrefix ++ imgRecord.url)
-        , onClick {description = "ClickedPhoto", data = imgRecord.url}
+        classList [("selected", selectedUrl == photo.url)]
+        , src (urlPrefix ++ photo.url)
+        , onClick (ClickedPhoto photo.url)
         ]
         []
 
+initialModel: Model
 initialModel =
     {
         photos = [
@@ -45,6 +85,7 @@ initialModel =
             , {url = "3.jpeg"}
         ]
         , selectedUrl = "1.jpeg"
+        , chosenSize = Medium
     }
 
 main =
