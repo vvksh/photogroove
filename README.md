@@ -12,3 +12,4 @@ elm reactor
 
 Go to http://localhost:8000 and click on index.html.
 
+Current demo: https://viveks.xyz/photogroove/ [hosted using github pages in this very repo]
