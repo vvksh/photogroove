@@ -1,21 +1,27 @@
 module PhotoGroove exposing (main)
 
 import Html exposing (Html, div, h1, h3, img, input, label, text)
-import Html.Attributes exposing (..)
+import Html.Attributes exposing (class, classList, id, name, src, title, type_)
 import List
 import Html.Events exposing (onClick)
 import Browser
 import Http
+import Json.Decode exposing (Decoder, bool, int, list, string, succeed)
+import Json.Decode.Pipeline exposing (optional, required)
 
 urlPrefix: String
-urlPrefix = "http://elm-in-action.com/"
+urlPrefix = "https://raw.githubusercontent.com/vvksh/photogroove/master/photos/"
 
-type alias Photo = { url: String }
+type alias Photo =
+    { url : String
+     , size : Int
+     , title : String
+     }
 
 type  Msg
     = ClickedPhoto String
     | ClickedSize ThumbnailSize
-    | GotPhotos (Result Http.Error String)
+    | GotPhotos (Result Http.Error (List Photo))
 
 type ThumbnailSize = Small | Medium | Large
 
@@ -86,20 +92,15 @@ update msg model =
         ClickedSize size ->
             ({ model | chosenSize = size }, Cmd.none)
 
-        GotPhotos result ->
-            case result of
-                Ok responseStr ->
-                    case String.split "," responseStr of
-                        ( firstUrl :: _ ) as urls ->
-                            let
-                                photos = List.map (\url -> {url = url}) urls
-                            in
-                                ({model | status = Loaded photos firstUrl}, Cmd.none)
-                        [] ->
-                            ( { model | status = Errored ("0 photos found")}, Cmd.none )
+        GotPhotos (Ok photos) ->
+            case photos of
+                firstPhoto :: _ ->
+                      ({model | status = Loaded photos firstPhoto.url}, Cmd.none)
+                [] ->
+                    ( { model | status = Errored ("0 photos found")}, Cmd.none )
 
-                Err httpError ->
-                    ( { model | status = Errored ("server error")}, Cmd.none )
+        GotPhotos (Err httpError) ->
+             ( { model | status = Errored ("server error")}, Cmd.none )
 
 
 viewLoaded: List Photo -> String -> ThumbnailSize-> List (Html Msg)
@@ -111,14 +112,23 @@ viewLoaded photos selectedUrl chosenSize =
 
 
 viewThumbnail: String  -> Photo -> Html Msg
-viewThumbnail selectedUrl photo =
+viewThumbnail selectedUrl thumb =
     img
         [
-        classList [("selected", selectedUrl == photo.url)]
-        , src (urlPrefix ++ photo.url)
-        , onClick (ClickedPhoto photo.url)
+        classList [("selected", selectedUrl == thumb.url)]
+        , title (thumb.title ++ " [ " ++ String.fromInt thumb.size ++ " KB ]")
+        , src (urlPrefix ++ thumb.url)
+        , onClick (ClickedPhoto thumb.url)
         ]
         []
+
+photoDecoder: Decoder Photo
+photoDecoder =
+    succeed Photo
+        |> required "url" string
+        |> required "size" int
+        |> optional "title" string "untitled"
+
 
 initialModel: Model
 initialModel =
@@ -130,8 +140,8 @@ initialModel =
 initialCmd: Cmd Msg
 initialCmd =
     Http.get {
-        url = "http://elm-in-action.com/photos/list",
-        expect = Http.expectString GotPhotos
+        url = "https://raw.githubusercontent.com/vvksh/photogroove/master/photos/list.json",
+        expect = Http.expectJson GotPhotos (list photoDecoder)
     }
 
 main : Program () Model Msg
