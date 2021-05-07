@@ -47,21 +47,21 @@ type alias Model =
 
 view: Model -> Html Msg
 view model =
-     div [ class "content"] <|
-         case model.status of
-             Loading ->
-                 []
+     div [ class "content"]
+         [ div [ id "choose-size"] (List.map viewSizeChooser [Small, Medium, Large])
+          , div [ id "container"] <|
+             case model.status of
+                 Loading ->
+                     []
 
-             -- todo implement loaded fn
-             Loaded _ _ ->
-                 [
-                 h1 [ ] [text "photos loaded, todo"]
-                 ]
+                 Loaded photos selectedUrl ->
+                     viewLoaded photos selectedUrl model.chosenSize
 
-             Errored errorMsg ->
-                 [
-                  h1 [ ] [text ("Got Error while loading" ++ errorMsg) ]
-                 ]
+                 Errored errorMsg ->
+                     [
+                      h1 [ ] [text ("Got Error while loading" ++ errorMsg) ]
+                     ]
+          ]
 
 
 selectUrl: String -> Status -> Status
@@ -88,14 +88,29 @@ update msg model =
 
         GotPhotos result ->
             case result of
-                Ok successString ->
-                   ({model | status = Errored ("Got string," ++ successString)}, Cmd.none)
+                Ok responseStr ->
+                    case String.split "," responseStr of
+                        ( firstUrl :: _ ) as urls ->
+                            let
+                                photos = List.map (\url -> {url = url}) urls
+                            in
+                                ({model | status = Loaded photos firstUrl}, Cmd.none)
+                        [] ->
+                            ( { model | status = Errored ("0 photos found")}, Cmd.none )
 
                 Err httpError ->
                     ( { model | status = Errored ("server error")}, Cmd.none )
 
 
-viewThumbnail: String -> Photo -> Html Msg
+viewLoaded: List Photo -> String -> ThumbnailSize-> List (Html Msg)
+viewLoaded photos selectedUrl chosenSize =
+    [
+        div [ id "thumbnails", class (sizeToString chosenSize)] (List.map (viewThumbnail selectedUrl) photos)
+        , img [ class "large", src (urlPrefix ++ selectedUrl)] []
+    ]
+
+
+viewThumbnail: String  -> Photo -> Html Msg
 viewThumbnail selectedUrl photo =
     img
         [

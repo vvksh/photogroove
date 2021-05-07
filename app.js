@@ -6114,12 +6114,12 @@ var $elm$core$Platform$Sub$none = $elm$core$Platform$Sub$batch(_List_Nil);
 var $author$project$PhotoGroove$Errored = function (a) {
 	return {$: 'Errored', a: a};
 };
-var $elm$core$Platform$Cmd$batch = _Platform_batch;
-var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$PhotoGroove$Loaded = F2(
 	function (a, b) {
 		return {$: 'Loaded', a: a, b: b};
 	});
+var $elm$core$Platform$Cmd$batch = _Platform_batch;
+var $elm$core$Platform$Cmd$none = $elm$core$Platform$Cmd$batch(_List_Nil);
 var $author$project$PhotoGroove$selectUrl = F2(
 	function (url, status) {
 		switch (status.$) {
@@ -6155,14 +6155,33 @@ var $author$project$PhotoGroove$update = F2(
 			default:
 				var result = msg.a;
 				if (result.$ === 'Ok') {
-					var successString = result.a;
-					return _Utils_Tuple2(
-						_Utils_update(
-							model,
-							{
-								status: $author$project$PhotoGroove$Errored('Got string,' + successString)
-							}),
-						$elm$core$Platform$Cmd$none);
+					var responseStr = result.a;
+					var _v2 = A2($elm$core$String$split, ',', responseStr);
+					if (_v2.b) {
+						var urls = _v2;
+						var firstUrl = urls.a;
+						var photos = A2(
+							$elm$core$List$map,
+							function (url) {
+								return {url: url};
+							},
+							urls);
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									status: A2($author$project$PhotoGroove$Loaded, photos, firstUrl)
+								}),
+							$elm$core$Platform$Cmd$none);
+					} else {
+						return _Utils_Tuple2(
+							_Utils_update(
+								model,
+								{
+									status: $author$project$PhotoGroove$Errored('0 photos found')
+								}),
+							$elm$core$Platform$Cmd$none);
+					}
 				} else {
 					var httpError = result.a;
 					return _Utils_Tuple2(
@@ -6175,6 +6194,8 @@ var $author$project$PhotoGroove$update = F2(
 				}
 		}
 	});
+var $author$project$PhotoGroove$Large = {$: 'Large'};
+var $author$project$PhotoGroove$Small = {$: 'Small'};
 var $elm$json$Json$Encode$string = _Json_wrap;
 var $elm$html$Html$Attributes$stringProperty = F2(
 	function (key, string) {
@@ -6186,8 +6207,146 @@ var $elm$html$Html$Attributes$stringProperty = F2(
 var $elm$html$Html$Attributes$class = $elm$html$Html$Attributes$stringProperty('className');
 var $elm$html$Html$div = _VirtualDom_node('div');
 var $elm$html$Html$h1 = _VirtualDom_node('h1');
+var $elm$html$Html$Attributes$id = $elm$html$Html$Attributes$stringProperty('id');
 var $elm$virtual_dom$VirtualDom$text = _VirtualDom_text;
 var $elm$html$Html$text = $elm$virtual_dom$VirtualDom$text;
+var $elm$html$Html$img = _VirtualDom_node('img');
+var $author$project$PhotoGroove$sizeToString = function (size) {
+	switch (size.$) {
+		case 'Small':
+			return 'small';
+		case 'Medium':
+			return 'med';
+		default:
+			return 'large';
+	}
+};
+var $elm$html$Html$Attributes$src = function (url) {
+	return A2(
+		$elm$html$Html$Attributes$stringProperty,
+		'src',
+		_VirtualDom_noJavaScriptOrHtmlUri(url));
+};
+var $author$project$PhotoGroove$urlPrefix = 'http://elm-in-action.com/';
+var $author$project$PhotoGroove$ClickedPhoto = function (a) {
+	return {$: 'ClickedPhoto', a: a};
+};
+var $elm$core$List$filter = F2(
+	function (isGood, list) {
+		return A3(
+			$elm$core$List$foldr,
+			F2(
+				function (x, xs) {
+					return isGood(x) ? A2($elm$core$List$cons, x, xs) : xs;
+				}),
+			_List_Nil,
+			list);
+	});
+var $elm$core$Tuple$second = function (_v0) {
+	var y = _v0.b;
+	return y;
+};
+var $elm$html$Html$Attributes$classList = function (classes) {
+	return $elm$html$Html$Attributes$class(
+		A2(
+			$elm$core$String$join,
+			' ',
+			A2(
+				$elm$core$List$map,
+				$elm$core$Tuple$first,
+				A2($elm$core$List$filter, $elm$core$Tuple$second, classes))));
+};
+var $elm$virtual_dom$VirtualDom$Normal = function (a) {
+	return {$: 'Normal', a: a};
+};
+var $elm$virtual_dom$VirtualDom$on = _VirtualDom_on;
+var $elm$html$Html$Events$on = F2(
+	function (event, decoder) {
+		return A2(
+			$elm$virtual_dom$VirtualDom$on,
+			event,
+			$elm$virtual_dom$VirtualDom$Normal(decoder));
+	});
+var $elm$html$Html$Events$onClick = function (msg) {
+	return A2(
+		$elm$html$Html$Events$on,
+		'click',
+		$elm$json$Json$Decode$succeed(msg));
+};
+var $author$project$PhotoGroove$viewThumbnail = F2(
+	function (selectedUrl, photo) {
+		return A2(
+			$elm$html$Html$img,
+			_List_fromArray(
+				[
+					$elm$html$Html$Attributes$classList(
+					_List_fromArray(
+						[
+							_Utils_Tuple2(
+							'selected',
+							_Utils_eq(selectedUrl, photo.url))
+						])),
+					$elm$html$Html$Attributes$src(
+					_Utils_ap($author$project$PhotoGroove$urlPrefix, photo.url)),
+					$elm$html$Html$Events$onClick(
+					$author$project$PhotoGroove$ClickedPhoto(photo.url))
+				]),
+			_List_Nil);
+	});
+var $author$project$PhotoGroove$viewLoaded = F3(
+	function (photos, selectedUrl, chosenSize) {
+		return _List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('thumbnails'),
+						$elm$html$Html$Attributes$class(
+						$author$project$PhotoGroove$sizeToString(chosenSize))
+					]),
+				A2(
+					$elm$core$List$map,
+					$author$project$PhotoGroove$viewThumbnail(selectedUrl),
+					photos)),
+				A2(
+				$elm$html$Html$img,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$class('large'),
+						$elm$html$Html$Attributes$src(
+						_Utils_ap($author$project$PhotoGroove$urlPrefix, selectedUrl))
+					]),
+				_List_Nil)
+			]);
+	});
+var $author$project$PhotoGroove$ClickedSize = function (a) {
+	return {$: 'ClickedSize', a: a};
+};
+var $elm$html$Html$input = _VirtualDom_node('input');
+var $elm$html$Html$label = _VirtualDom_node('label');
+var $elm$html$Html$Attributes$name = $elm$html$Html$Attributes$stringProperty('name');
+var $elm$html$Html$Attributes$type_ = $elm$html$Html$Attributes$stringProperty('type');
+var $author$project$PhotoGroove$viewSizeChooser = function (size) {
+	return A2(
+		$elm$html$Html$label,
+		_List_Nil,
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$input,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$type_('radio'),
+						$elm$html$Html$Attributes$name('size'),
+						$elm$html$Html$Events$onClick(
+						$author$project$PhotoGroove$ClickedSize(size))
+					]),
+				_List_Nil),
+				$elm$html$Html$text(
+				$author$project$PhotoGroove$sizeToString(size))
+			]));
+};
 var $author$project$PhotoGroove$view = function (model) {
 	return A2(
 		$elm$html$Html$div,
@@ -6195,36 +6354,49 @@ var $author$project$PhotoGroove$view = function (model) {
 			[
 				$elm$html$Html$Attributes$class('content')
 			]),
-		function () {
-			var _v0 = model.status;
-			switch (_v0.$) {
-				case 'Loading':
-					return _List_Nil;
-				case 'Loaded':
-					return _List_fromArray(
-						[
-							A2(
-							$elm$html$Html$h1,
-							_List_Nil,
-							_List_fromArray(
+		_List_fromArray(
+			[
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('choose-size')
+					]),
+				A2(
+					$elm$core$List$map,
+					$author$project$PhotoGroove$viewSizeChooser,
+					_List_fromArray(
+						[$author$project$PhotoGroove$Small, $author$project$PhotoGroove$Medium, $author$project$PhotoGroove$Large]))),
+				A2(
+				$elm$html$Html$div,
+				_List_fromArray(
+					[
+						$elm$html$Html$Attributes$id('container')
+					]),
+				function () {
+					var _v0 = model.status;
+					switch (_v0.$) {
+						case 'Loading':
+							return _List_Nil;
+						case 'Loaded':
+							var photos = _v0.a;
+							var selectedUrl = _v0.b;
+							return A3($author$project$PhotoGroove$viewLoaded, photos, selectedUrl, model.chosenSize);
+						default:
+							var errorMsg = _v0.a;
+							return _List_fromArray(
 								[
-									$elm$html$Html$text('photos loaded, todo')
-								]))
-						]);
-				default:
-					var errorMsg = _v0.a;
-					return _List_fromArray(
-						[
-							A2(
-							$elm$html$Html$h1,
-							_List_Nil,
-							_List_fromArray(
-								[
-									$elm$html$Html$text('Got Error while loading' + errorMsg)
-								]))
-						]);
-			}
-		}());
+									A2(
+									$elm$html$Html$h1,
+									_List_Nil,
+									_List_fromArray(
+										[
+											$elm$html$Html$text('Got Error while loading' + errorMsg)
+										]))
+								]);
+					}
+				}())
+			]));
 };
 var $author$project$PhotoGroove$main = $elm$browser$Browser$element(
 	{
