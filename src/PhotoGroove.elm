@@ -5,6 +5,7 @@ import Html.Attributes exposing (..)
 import List
 import Html.Events exposing (onClick)
 import Browser
+import Http
 
 urlPrefix: String
 urlPrefix = "http://elm-in-action.com/"
@@ -14,6 +15,7 @@ type alias Photo = { url: String }
 type  Msg
     = ClickedPhoto String
     | ClickedSize ThumbnailSize
+    | GotPhotos (Result Http.Error String)
 
 type ThumbnailSize = Small | Medium | Large
 
@@ -24,6 +26,10 @@ sizeToString size =
         Medium -> "med"
         Large -> "large"
 
+type Status
+    = Loading
+    | Loaded (List Photo) String
+    | Errored String
 
 
 viewSizeChooser: ThumbnailSize -> Html Msg
@@ -35,35 +41,58 @@ viewSizeChooser size =
 
 
 type alias Model =
-    { photos : List Photo
-    , selectedUrl : String
+    { status: Status
     , chosenSize : ThumbnailSize}
 
 
 view: Model -> Html Msg
 view model =
-     div [ class "content"]
-         [ h1 [ ] [text "Photo Groove"]
-         , h3 [] [text "Thumbnail size"]
-         , div [ id "choose-size"] (List.map viewSizeChooser [Small, Medium, Large])
-         , div [ id "thumbnails", class (sizeToString model.chosenSize) ]
-                (List.map (viewThumbnail model.selectedUrl) model.photos)
-         , img
-            [
-            class "large"
-            , src (urlPrefix ++ model.selectedUrl)
-            ]
-            []
-         ]
+     div [ class "content"] <|
+         case model.status of
+             Loading ->
+                 []
 
-update: Msg -> Model -> Model
+             -- todo implement loaded fn
+             Loaded _ _ ->
+                 [
+                 h1 [ ] [text "photos loaded, todo"]
+                 ]
+
+             Errored errorMsg ->
+                 [
+                  h1 [ ] [text ("Got Error while loading" ++ errorMsg) ]
+                 ]
+
+
+selectUrl: String -> Status -> Status
+selectUrl url status =
+    case status of
+        Loading ->
+            status
+
+        Loaded photos _ ->
+            Loaded photos url
+
+        Errored errorMsg ->
+            status
+
+
+update: Msg -> Model -> (Model, Cmd Msg)
 update msg model =
     case msg of
         ClickedPhoto url ->
-            { model | selectedUrl = url }
+            ({ model | status = selectUrl url  model.status}, Cmd.none)
 
         ClickedSize size ->
-            { model | chosenSize = size }
+            ({ model | chosenSize = size }, Cmd.none)
+
+        GotPhotos result ->
+            case result of
+                Ok successString ->
+                   ({model | status = Errored ("Got string," ++ successString)}, Cmd.none)
+
+                Err httpError ->
+                    ( { model | status = Errored ("server error")}, Cmd.none )
 
 
 viewThumbnail: String -> Photo -> Html Msg
@@ -79,18 +108,22 @@ viewThumbnail selectedUrl photo =
 initialModel: Model
 initialModel =
     {
-        photos = [
-            {url = "1.jpeg"}
-            , {url = "2.jpeg"}
-            , {url = "3.jpeg"}
-        ]
-        , selectedUrl = "1.jpeg"
+        status = Loading
         , chosenSize = Medium
     }
 
+initialCmd: Cmd Msg
+initialCmd =
+    Http.get {
+        url = "http://elm-in-action.com/photos/list",
+        expect = Http.expectString GotPhotos
+    }
+
+main : Program () Model Msg
 main =
-    Browser.sandbox
-    {init = initialModel
+    Browser.element
+    { init = \_ -> (initialModel, initialCmd)
     , view = view
     , update = update
+    , subscriptions = \_ -> Sub.none
     }
